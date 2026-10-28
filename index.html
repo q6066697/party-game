@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#5a189a">
+  <meta name="description" content="Крокодил: Хаос — весёлая party-игра для компании прямо в браузере.">
+  <title>Крокодил: Хаос</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🐊%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body data-screen="start">
+  <canvas id="confetti" aria-hidden="true"></canvas>
+
+  <header class="topbar">
+    <button id="btn-home" class="icon-btn" type="button" title="Выйти в меню" aria-label="Выйти в меню" hidden>✕</button>
+    <div class="topbar-logo" aria-hidden="true">🐊 <span>Хаос</span></div>
+    <button id="btn-sound" class="icon-btn" type="button" title="Выключить звук" aria-label="Выключить звук" aria-pressed="false">🔊</button>
+  </header>
+
+  <main id="app">
+
+    <!-- ===== Старт ===== -->
+    <section class="screen" id="screen-start">
+      <div class="logo" aria-hidden="true">🐊</div>
+      <h1 class="title">Крокодил:<span class="title-accent">Хаос</span></h1>
+      <p class="subtitle">Показывай слова без слов. Но не просто так.</p>
+      <button class="btn btn-primary btn-xl" id="btn-play" type="button">Играть</button>
+      <details class="rules panel">
+        <summary>Правила</summary>
+        <ol>
+          <li>Команды по очереди показывают слова без слов: жесты, мимика, движения. Один показывает, остальные из его команды угадывают.</li>
+          <li>Перед раундом команда делает ставку: лёгкие слова — 1 очко, средние — 2, безумные — 3. Ставка действует на весь раунд.</li>
+          <li>К каждому слову выпадает <b>карта условия</b>: показывать нужно именно так.</li>
+          <li>«Угадали» — очки и следующее слово. «Пропустить» — следующее слово без очков и без штрафа.</li>
+          <li>Раз за игру каждая команда может подкинуть сопернику <b>«Подлянку»</b>: дополнительное условие на весь его раунд.</li>
+          <li>Побеждает команда, набравшая больше всех очков.</li>
+        </ol>
+      </details>
+    </section>
+
+    <!-- ===== Настройка ===== -->
+    <section class="screen" id="screen-setup">
+      <h2 class="screen-title">Настройка игры</h2>
+      <div class="panel setup">
+        <div class="field">
+          <span class="field-label" id="lbl-teams">Сколько команд</span>
+          <div class="seg" id="seg-teams" role="radiogroup" aria-labelledby="lbl-teams">
+            <button type="button" class="seg-btn" role="radio" data-value="2">2</button>
+            <button type="button" class="seg-btn" role="radio" data-value="3">3</button>
+            <button type="button" class="seg-btn" role="radio" data-value="4">4</button>
+          </div>
+        </div>
+
+        <div class="team-inputs" id="team-inputs"></div>
+
+        <div class="field">
+          <span class="field-label" id="lbl-time">Время раунда</span>
+          <div class="seg" id="seg-time" role="radiogroup" aria-labelledby="lbl-time">
+            <button type="button" class="seg-btn" role="radio" data-value="30">30 с</button>
+            <button type="button" class="seg-btn" role="radio" data-value="60">60 с</button>
+            <button type="button" class="seg-btn" role="radio" data-value="90">90 с</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <span class="field-label">Раундов на команду</span>
+          <div class="stepper">
+            <button type="button" class="stepper-btn" id="rounds-minus" aria-label="Меньше раундов">−</button>
+            <output class="stepper-value" id="rounds-value" aria-live="polite">3</output>
+            <button type="button" class="stepper-btn" id="rounds-plus" aria-label="Больше раундов">+</button>
+          </div>
+        </div>
+
+        <p class="setup-summary" id="setup-summary"></p>
+      </div>
+      <div class="actions">
+        <button class="btn btn-ghost" id="btn-setup-back" type="button">← Назад</button>
+        <button class="btn btn-primary" id="btn-start-game" type="button">Поехали! 🚀</button>
+      </div>
+    </section>
+
+    <!-- ===== Передача хода ===== -->
+    <section class="screen" id="screen-turn">
+      <div class="badge" id="turn-round"></div>
+      <div class="scoreboard" id="turn-scoreboard"></div>
+      <div class="turn-hero">
+        <p class="turn-label">Ходит команда</p>
+        <h2 class="team-pill team-pill-xl" id="turn-team"></h2>
+        <p class="hint">Выберите, кто показывает, и передайте ему устройство.</p>
+      </div>
+      <div class="panel sabotage-box">
+        <h3 class="sabotage-title">😈 Подлянка</h3>
+        <p class="hint" id="sabotage-hint"></p>
+        <div class="sabotage-buttons" id="sabotage-buttons"></div>
+        <div class="card card-sabotage" id="sabotage-card" hidden>
+          <span class="card-icon" aria-hidden="true"></span>
+          <span class="card-label"></span>
+          <span class="card-text"></span>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-xl" id="btn-to-bet" type="button">К ставке →</button>
+    </section>
+
+    <!-- ===== Ставка ===== -->
+    <section class="screen" id="screen-bet">
+      <h2 class="screen-title"><span class="team-pill" id="bet-team"></span>, ваша ставка?</h2>
+      <p class="hint">Ставка действует на все слова этого раунда.</p>
+      <div class="bets" id="bets">
+        <button type="button" class="bet bet-easy" data-diff="easy">
+          <span class="bet-emoji" aria-hidden="true">🟢</span>
+          <span class="bet-name">Лёгкое</span>
+          <span class="bet-points">+1</span>
+          <span class="bet-desc">Разминка для пальцев</span>
+        </button>
+        <button type="button" class="bet bet-medium" data-diff="medium">
+          <span class="bet-emoji" aria-hidden="true">🟡</span>
+          <span class="bet-name">Среднее</span>
+          <span class="bet-points">+2</span>
+          <span class="bet-desc">Придётся постараться</span>
+        </button>
+        <button type="button" class="bet bet-crazy" data-diff="crazy">
+          <span class="bet-emoji" aria-hidden="true">🔴</span>
+          <span class="bet-name">Безумное</span>
+          <span class="bet-points">+3</span>
+          <span class="bet-desc">Полный хаос</span>
+        </button>
+      </div>
+      <button class="btn btn-ghost" id="btn-bet-back" type="button">← Назад</button>
+    </section>
+
+    <!-- ===== Раунд ===== -->
+    <section class="screen" id="screen-round">
+      <div class="round-head">
+        <span class="team-pill" id="round-team"></span>
+        <span class="badge" id="round-diff"></span>
+      </div>
+
+      <div class="round-body">
+        <div class="round-side">
+          <div class="timer" id="timer" role="timer" aria-live="off">
+            <svg viewBox="0 0 120 120" aria-hidden="true">
+              <circle class="timer-track" cx="60" cy="60" r="54"></circle>
+              <circle class="timer-progress" id="timer-progress" cx="60" cy="60" r="54"></circle>
+            </svg>
+            <span class="timer-value" id="timer-value">60</span>
+          </div>
+          <div class="round-score">
+            <span class="round-score-label">Очки за раунд</span>
+            <span class="round-score-value" id="round-points">0</span>
+          </div>
+        </div>
+
+        <div class="round-cards">
+          <div class="word-card" id="word-card">
+            <span class="word-category" id="word-category"></span>
+            <span class="word-text" id="word-text"></span>
+            <span class="word-mask" aria-hidden="true">🙈 Слово скрыто</span>
+            <button type="button" class="btn btn-small" id="btn-hide" aria-pressed="false">🙈 Скрыть</button>
+          </div>
+          <div class="card card-condition" id="condition-card">
+            <span class="card-icon" aria-hidden="true"></span>
+            <span class="card-label"></span>
+            <span class="card-text"></span>
+          </div>
+          <div class="card card-sabotage" id="round-sabotage" hidden>
+            <span class="card-icon" aria-hidden="true"></span>
+            <span class="card-label"></span>
+            <span class="card-text"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="round-actions">
+        <button type="button" class="btn btn-skip" id="btn-skip" disabled>⏭ Пропустить</button>
+        <button type="button" class="btn btn-success" id="btn-guess" disabled>✅ Угадали</button>
+      </div>
+
+      <div class="countdown" id="countdown" hidden>
+        <p class="countdown-label">Приготовились!</p>
+        <span class="countdown-value" id="countdown-value">3</span>
+      </div>
+    </section>
+
+    <!-- ===== Итог раунда ===== -->
+    <section class="screen" id="screen-roundend">
+      <h2 class="screen-title">⌛ Время вышло!</h2>
+      <span class="team-pill" id="re-team"></span>
+      <div class="re-points"><span id="re-points">+0</span> <small id="re-points-label">очков</small></div>
+      <p class="hint" id="re-details"></p>
+      <ul class="re-words" id="re-words"></ul>
+      <div class="scoreboard" id="re-scoreboard"></div>
+      <button class="btn btn-primary btn-xl" id="btn-next-turn" type="button">Дальше</button>
+    </section>
+
+    <!-- ===== Финал ===== -->
+    <section class="screen" id="screen-final">
+      <div class="trophy" aria-hidden="true">🏆</div>
+      <p class="final-label" id="final-title">Победитель</p>
+      <h2 class="final-winner" id="final-winner"></h2>
+      <p class="final-score" id="final-score"></p>
+      <div class="panel final-stats">
+        <table class="stats-table">
+          <thead>
+            <tr><th>#</th><th>Команда</th><th>Очки</th><th>Угадано</th><th>Пропущено</th></tr>
+          </thead>
+          <tbody id="final-table"></tbody>
+        </table>
+        <p class="best-round" id="final-best"></p>
+      </div>
+      <div class="actions">
+        <button class="btn btn-ghost" id="btn-new-game" type="button">✨ Новая игра</button>
+        <button class="btn btn-primary" id="btn-rematch" type="button">🔁 Реванш</button>
+      </div>
+    </section>
+
+  </main>
+
+  <script src="words.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>
